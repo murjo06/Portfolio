@@ -14,9 +14,8 @@ class Body {
         this.forces = new Vector3(this.forces.x + force.x, this.forces.y + force.y, this.forces.z + force.z);
         this.acceleration = new Vector3(this.forces.x / this.mass, this.forces.y / this.mass, this.forces.z / this.mass);
     }
-    removeForce(force) {
-        this.forces = new Vector3(this.forces.x - force.x, this.forces.y - force.y, this.forces.z - force.z);
-        this.acceleration = new Vector3(this.forces.x / this.mass, this.forces.y / this.mass, this.forces.z / this.mass);
+    animate() {
+        this.forces = new Vector3(0, 0, 0);
     }
 }
 export { Body }

@@ -1,9 +1,10 @@
 import * as THREE from "three";
 import { Sky } from "./sky.js";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { Body } from "./physics.js";
 import { Vector3, Clock } from "three";
+import { getIslands } from "./island_generator.js";
 
 // boilerplate code
 const scene = new THREE.Scene();
@@ -13,17 +14,22 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.addEventListener("change", () => {renderer.render(scene, camera)});
-controls.enableZoom = false;
+controls.enableDamping = true;
+controls.dampingFactor = 0.2
 controls.enablePan = false;
+controls.enableZoom = false;
 const ambientLight = new THREE.AmbientLight(0x404040, 5);
 scene.add(ambientLight);
 
 
+const cameraOffset = new Vector3(-10, 4, 0);
+
+
 const gravity = 0;
-const thrust = 50;
-const terminalVelocity = 10;
+const thrust = 300;
+const terminalVelocity = 50;
 const rotationSpeed = 0.1;
-const resistance = 0.05;
+const resistance = 2;
 
 
 let plane = new THREE.Object3D();
@@ -73,11 +79,35 @@ function initSky() {
     renderer.render(scene, camera);
 }
 initSky();
-
-
-camera.position.y = 10;
-camera.rotateX(Math.PI * 1.5);
-camera.rotateZ(Math.PI * 1.5);
+function initIslands() {
+    const enviromentIslands = 1;
+    const activeIslands = 0;
+    const positions = [[new Vector3(10, 10, 10)], []];
+    for(let i = 0; i < enviromentIslands; i++) {
+        const loader = new GLTFLoader();
+        loader.load(`models/islands/env_${i}.gltf`, function(gltf) {
+            let mesh = gltf.scene;
+            mesh.position.x = positions[0][i].x;
+            mesh.position.y = positions[0][i].y;
+            mesh.position.z = positions[0][i].z;
+            scene.add(mesh);
+            console.log(mesh.position);
+        }, undefined, function(error) {
+            console.log(error);
+        });
+    }
+    for(let i = 0; i < activeIslands; i++) {
+        const loader = new GLTFLoader();
+        loader.load(`models/islands/act_${i}.gltf`, function(gltf) {
+            let mesh = gltf.scene;
+            mesh.position.set(positions[1][i]);
+            scene.add(mesh);
+        }, undefined, function(error) {
+            console.log(error);
+        });
+    }
+}
+initIslands();
 
 const sqrt2 = Math.sqrt(2);
 
@@ -113,7 +143,6 @@ document.addEventListener("keyup", function(event) {
             moving = false;
         }
     }
-
 });
 
 const clock = new Clock(true);
@@ -126,15 +155,18 @@ function getThrust(multiplier) {
     );
 }
 function getResistance(multiplier, speed) {
-    return speed > 0.1 ? new Vector3(
+    return  new Vector3(
         -resistance * planeBody.velocityDirection.x * multiplier * speed * speed,
         -resistance * planeBody.velocityDirection.y * multiplier * speed * speed,
         -resistance * planeBody.velocityDirection.z * multiplier * speed * speed
-    ) : new Vector3(0, 0, 0);
+    );
 }
 
 let thrustForces = new Vector3(0, 0, 0);
 let dragForces = new Vector3(0, 0, 0);
+
+camera.position.copy(cameraOffset);
+camera.lookAt(new Vector3(0, cameraOffset.y, 0).add(plane.position));
 
 function animate() {
 	requestAnimationFrame(animate);
@@ -171,20 +203,11 @@ function animate() {
         planeBody.velocity.y = planeBody.velocity.y * k;
         planeBody.velocity.z = planeBody.velocity.z * k;
     }
-    Math.round((planeBody.velocity.x + Number.EPSILON) * 100) / 100;
-    Math.round((planeBody.velocity.z + Number.EPSILON) * 100) / 100;
-    Math.round((planeBody.velocity.y + Number.EPSILON) * 100) / 100;
-    if(planeBody.velocity.x * oldDirection.x < 0 || planeBody.velocity.y * oldDirection.y < 0 || planeBody.velocity.z * oldDirection.z < 0) {
-        planeBody.removeForce(dragForces);
-        dragForces = new Vector3(0, 0, 0);
-    }
     plane.position.x += planeBody.velocity.x * delta;
     plane.position.y += planeBody.velocity.y * delta;
     plane.position.z += planeBody.velocity.z * delta;
-    if(!includesSpace) {
-        planeBody.removeForce(thrustForces);
-        thrustForces = new Vector3(0, 0, 0);
-    }
+    //camera.position.copy(plane.position).add(cameraOffset);
+    planeBody.animate();
 	renderer.render(scene, camera);
 }
 animate();
