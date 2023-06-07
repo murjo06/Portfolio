@@ -7,7 +7,6 @@ class Body {
         this.forces = new Vector3(0, 0, 0);
         this.acceleration = new Vector3(this.forces.x / mass, this.forces.y / mass, this.forces.z / mass);
         this.velocity = new Vector3(0, 0, 0);
-        this.velocityDirection = new Vector3(0, 0, 0);
         this.speed = 0;
     }
     applyForce(force) {
