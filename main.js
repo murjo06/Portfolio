@@ -5,18 +5,11 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { Body } from "./physics.js";
 import { Vector3, Clock } from "three";
 
-// boilerplate code
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
-//const controls = new OrbitControls(camera, renderer.domElement);
-//controls.addEventListener("change", () => {renderer.render(scene, camera)});
-//controls.enableDamping = true;
-//controls.dampingFactor = 0.2
-//controls.enablePan = false;
-//controls.enableZoom = false;
 const ambientLight = new THREE.AmbientLight(0x404040, 7);
 scene.add(ambientLight);
 
@@ -29,17 +22,34 @@ const gravity = 1;
 const thrust = 500;
 const terminalVelocity = 10;
 const rotationSpeed = 0.1;
-const maxRotationSpeed = 0.1;
-const flipSpeed = 10;
-const maxFlipSpeed = 0.02;
+const rotationOverlap = 0.1;
+const rotationOverlapMultiplier = 0.01;
+const maxRotationSpeed = 0.2;
+const flipSpeed = 0.1;
+const flipOverlap = 0.1;
+const flipOverlapMultiplier = 0;
+const minFlip = 0.4;
+const maxFlip = 2;
+const maxFlipSpeed = 0.2;
 const resistance = 2;
-const centerRotation = 1;
-const velocityRotation = 1;
+
+let rotating = false;
+let rotationDirection = [0, 0];
+let flipDirection = 0;
+let rotationTimer = 0;
+let flipping = false;
+let flipTimer = 0;
+let flipDuration = 0;
 
 let loader = new GLTFLoader();
-loader.load("models/plane/scene.gltf", function(gltf) {
+loader.load("models/plane/plane.gltf", function(gltf) {
     const plane = new THREE.Object3D().copy(gltf.scene);
     scene.add(plane);
+    const mixer = new THREE.AnimationMixer(plane);
+    const clips = gltf.animations;
+    const clip = THREE.AnimationClip.findByName(clips, "Object_12Action");
+    const action = mixer.clipAction(clip);
+    action.play();
     const planeBody = new Body(plane, 10);
 
     function initSky() {
@@ -127,14 +137,8 @@ loader.load("models/plane/scene.gltf", function(gltf) {
 
     const clock = new Clock(true);
 
-    function getThrust(multiplier) {
-        let cosGamma = Math.cos(plane.rotation.x);
-        let sinGamma = Math.sin(plane.rotation.x);
-        return new Vector3(
-            thrust * cosGamma * Math.cos(plane.rotation.y) * multiplier,
-            thrust * sinGamma * multiplier,
-            thrust * cosGamma * Math.sin(plane.rotation.y) * multiplier
-        );
+    function getThrust(multiplier, quaternion) {
+        return new Vector3(thrust * multiplier, 0, 0).applyQuaternion(quaternion);
     }
     function getResistance(multiplier, speed, normal) {
         return  new Vector3(
@@ -145,7 +149,6 @@ loader.load("models/plane/scene.gltf", function(gltf) {
     }
     plane.add(followCamPivot);
     followCamPivot.position.copy(cameraOffset);
-    const piHalves = Math.PI / 2;
 
     function animate() {
     	requestAnimationFrame(animate);
@@ -153,19 +156,32 @@ loader.load("models/plane/scene.gltf", function(gltf) {
         let includesS = pressedKeys.includes("s");
         let includesD = pressedKeys.includes("d");
         let includesA = pressedKeys.includes("a");
-        let verticalDirection = includesW ? 1 : 0 + includesS ? -1 : 0;
-        let horizontalDirection = includesD ? 1 : 0 + includesA ? -1 : 0;
+        let verticalDirection = (includesW ? 1 : 0) + (includesS ? -1 : 0);
+        let horizontalDirection = (includesD ? 1 : 0) + (includesA ? -1 : 0);
         let includesSpace = pressedKeys.includes(" ");
         let includesShift = pressedKeys.includes("Shift");
         let lMouse = pressedKeys.includes("z") ? 1 : 0;
         let rMouse = pressedKeys.includes("x") ? -1 : 0;
         let delta = clock.getDelta();
+        mixer.update(delta);
         if(lMouse + rMouse != 0) {
-            let direction = rMouse == -1 ? 1 : -1;
-            plane.rotateOnAxis(new Vector3(1, 0, 0), direction == -1 ? Math.min(-flipSpeed * planeBody.speed * delta * direction, -maxFlipSpeed) : -Math.max(-flipSpeed * planeBody.speed * delta * direction, -maxFlipSpeed));
+            flipping = true;
+            flipDirection = rMouse == -1 ? 1 : -1;
+            let rotSpeed = Math.min(flipSpeed * planeBody.speed * delta, maxFlipSpeed);
+            plane.rotateOnAxis(new Vector3(1, 0, 0), rotSpeed * flipDirection);
+        } else if(flipping && flipTimer <= flipOverlap && flipDuration > minFlip) {
+            if(flipTimer != 0) {
+                let rotSpeed = Math.min(flipSpeed * planeBody.speed * delta * flipOverlapMultiplier / flipDuration, maxFlipSpeed);
+                plane.rotateOnAxis(new Vector3(1, 0, 0), rotSpeed * flipDirection);
+            }
+            flipTimer += delta;
+        }
+        if(flipping && flipTimer > flipOverlap) {
+            flipping = false;
+            flipTimer = 0;
         }
         planeBody.applyForce(new Vector3(0, -gravity * planeBody.mass, 0));
-        let thrustForce = getThrust(includesSpace ? 1 : 0);
+        let thrustForce = getThrust(includesSpace ? 1 : 0, plane.quaternion);
         planeBody.applyForce(thrustForce);
         let normalThrust = thrustForce.clone().normalize();
         let drag = getResistance(includesShift ? 20 : 1, planeBody.speed, normalThrust);
@@ -182,13 +198,25 @@ loader.load("models/plane/scene.gltf", function(gltf) {
         plane.position.y += planeBody.velocity.y * delta;
         plane.position.z += planeBody.velocity.z * delta;
         let spd = -rotationSpeed * delta * planeBody.speed;
-        plane.rotateOnAxis(new Vector3(0, 0, 1), Math.min(spd * verticalDirection, maxRotationSpeed));
-        plane.rotateOnAxis(new Vector3(0, 1, 0), Math.min(spd * horizontalDirection, maxRotationSpeed));
-        let planeDirection = new Vector3();
-        plane.get(planeDirection);
-        console.log(planeDirection);
-        if(planeDirection.normalize().y > planeBody.velocity.clone().normalize().y) {
-            plane.rotateOnAxis(new Vector3(0, 0, 1), -velocityRotation * delta * planeBody.speed / terminalVelocity);
+        plane.rotateOnAxis(new Vector3(0, 0, 1), Math.min(spd, maxRotationSpeed) * verticalDirection);
+        plane.rotateOnAxis(new Vector3(0, 1, 0), Math.min(spd, maxRotationSpeed) * horizontalDirection);
+        if(verticalDirection != 0 || horizontalDirection != 0) {
+            rotationDirection = [horizontalDirection, verticalDirection];
+            rotating = true;
+        }
+        if(rotating && verticalDirection == 0 && horizontalDirection == 0) {
+            if(rotationTimer <= rotationOverlap) {
+                if(rotationTimer != 0) {
+                    let rotSpeed = Math.min(spd * rotationOverlapMultiplier / rotationTimer, maxRotationSpeed);
+                    plane.rotateOnAxis(new Vector3(0, 0, 1), rotSpeed * rotationDirection[1]);
+                    plane.rotateOnAxis(new Vector3(0, 1, 0), rotSpeed * rotationDirection[0]);
+                }
+                rotationTimer += delta;
+            } else {
+                rotationTimer = 0;
+                rotating = false;
+                rotationDirection = [0, 0];
+            }
         }
         let worldPosition = new Vector3();
         followCamPivot.getWorldPosition(worldPosition);
