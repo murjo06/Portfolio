@@ -1,37 +1,101 @@
-import Node, { addNodeClass } from '../core/Node.js';
-import { maxMipLevel } from './MaxMipLevelNode.js';
-import { nodeProxy } from '../shadernode/ShaderNode.js';
+import { TempNode } from '../core/TempNode.js';
+import { FunctionNode } from '../core/FunctionNode.js';
+import { MaxMIPLevelNode } from './MaxMIPLevelNode.js';
 
-class SpecularMIPLevelNode extends Node {
+class SpecularMIPLevelNode extends TempNode {
 
-	constructor( textureNode, roughnessNode = null ) {
+	constructor( roughness, texture ) {
 
-		super( 'float' );
+		super( 'f' );
 
-		this.textureNode = textureNode;
-		this.roughnessNode = roughnessNode;
+		this.roughness = roughness;
+		this.texture = texture;
+
+		this.maxMIPLevel = undefined;
 
 	}
 
-	construct() {
+	setTexture( texture ) {
 
-		const { textureNode, roughnessNode } = this;
+		this.texture = texture;
 
-		// taken from here: http://casual-effects.blogspot.ca/2011/08/plausible-environment-lighting-in-two.html
+		return this;
 
-		const maxMIPLevelScalar = maxMipLevel( textureNode );
+	}
 
-		const sigma = roughnessNode.mul( roughnessNode ).mul( Math.PI ).div( roughnessNode.add( 1.0 ) );
-		const desiredMIPLevel = maxMIPLevelScalar.add( sigma.log2() );
+	generate( builder, output ) {
 
-		return desiredMIPLevel.clamp( 0.0, maxMIPLevelScalar );
+		if ( builder.isShader( 'fragment' ) ) {
+
+			this.maxMIPLevel = this.maxMIPLevel || new MaxMIPLevelNode();
+			this.maxMIPLevel.texture = this.texture;
+
+			const getSpecularMIPLevel = builder.include( SpecularMIPLevelNode.Nodes.getSpecularMIPLevel );
+
+			return builder.format( getSpecularMIPLevel + '( ' + this.roughness.build( builder, 'f' ) + ', ' + this.maxMIPLevel.build( builder, 'f' ) + ' )', this.type, output );
+
+		} else {
+
+			console.warn( 'THREE.SpecularMIPLevelNode is not compatible with ' + builder.shader + ' shader.' );
+
+			return builder.format( '0.0', this.type, output );
+
+		}
+
+	}
+
+	copy( source ) {
+
+		super.copy( source );
+
+		this.texture = source.texture;
+		this.roughness = source.roughness;
+
+		return this;
+
+	}
+
+	toJSON( meta ) {
+
+		let data = this.getJSONNode( meta );
+
+		if ( ! data ) {
+
+			data = this.createJSONNode( meta );
+
+			data.texture = this.texture;
+			data.roughness = this.roughness;
+
+		}
+
+		return data;
 
 	}
 
 }
 
-export default SpecularMIPLevelNode;
+SpecularMIPLevelNode.Nodes = ( function () {
 
-export const specularMIPLevel = nodeProxy( SpecularMIPLevelNode );
+	// taken from here: http://casual-effects.blogspot.ca/2011/08/plausible-environment-lighting-in-two.html
 
-addNodeClass( SpecularMIPLevelNode );
+	const getSpecularMIPLevel = new FunctionNode( /* glsl */`
+
+		float getSpecularMIPLevel( const in float roughness, const in float maxMIPLevelScalar ) {
+
+			float sigma = PI * roughness * roughness / ( 1.0 + roughness );
+			float desiredMIPLevel = maxMIPLevelScalar + log2( sigma );
+
+			return clamp( desiredMIPLevel, 0.0, maxMIPLevelScalar );
+
+		}`
+	);
+
+	return {
+		getSpecularMIPLevel: getSpecularMIPLevel
+	};
+
+} )();
+
+SpecularMIPLevelNode.prototype.nodeType = 'SpecularMIPLevel';
+
+export { SpecularMIPLevelNode };

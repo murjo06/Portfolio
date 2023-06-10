@@ -1,95 +1,139 @@
-import Node, { addNodeClass } from '../core/Node.js';
-import { attribute } from '../core/AttributeNode.js';
-import { label } from '../core/VarNode.js';
-import { varying } from '../core/VaryingNode.js';
-import { normalize } from '../math/MathNode.js';
-import { cameraViewMatrix } from './CameraNode.js';
-import { modelNormalMatrix } from './ModelNode.js';
-import { nodeImmutable } from '../shadernode/ShaderNode.js';
+import { TempNode } from '../core/TempNode.js';
+import { NodeLib } from '../core/NodeLib.js';
 
-class NormalNode extends Node {
+class NormalNode extends TempNode {
 
-	constructor( scope = NormalNode.LOCAL ) {
+	constructor( scope ) {
 
-		super( 'vec3' );
+		super( 'v3' );
 
-		this.scope = scope;
+		this.scope = scope || NormalNode.VIEW;
 
 	}
 
-	isGlobal() {
+	getShared() {
 
-		return true;
+		// if shared is false, TempNode will not create temp variable (for optimization)
 
-	}
-
-	getHash( /*builder*/ ) {
-
-		return `normal-${this.scope}`;
+		return this.scope === NormalNode.WORLD;
 
 	}
 
-	generate( builder ) {
+	build( builder, output, uuid, ns ) {
 
-		const scope = this.scope;
+		const contextNormal = builder.context[ this.scope + 'Normal' ];
 
-		let outputNode = null;
+		if ( contextNormal ) {
 
-		if ( scope === NormalNode.GEOMETRY ) {
-
-			outputNode = attribute( 'normal', 'vec3' );
-
-		} else if ( scope === NormalNode.LOCAL ) {
-
-			outputNode = varying( normalGeometry );
-
-		} else if ( scope === NormalNode.VIEW ) {
-
-			const vertexNode = modelNormalMatrix.mul( normalLocal );
-			outputNode = normalize( varying( vertexNode ) );
-
-		} else if ( scope === NormalNode.WORLD ) {
-
-			// To use inverseTransformDirection only inverse the param order like this: cameraViewMatrix.transformDirection( normalView )
-			const vertexNode = normalView.transformDirection( cameraViewMatrix );
-			outputNode = normalize( varying( vertexNode ) );
+			return contextNormal.build( builder, output, uuid, ns );
 
 		}
 
-		return outputNode.build( builder, this.getNodeType( builder ) );
+		return super.build( builder, output, uuid );
 
 	}
 
-	serialize( data ) {
+	generate( builder, output ) {
 
-		super.serialize( data );
+		let result;
 
-		data.scope = this.scope;
+		switch ( this.scope ) {
+
+			case NormalNode.VIEW:
+
+				if ( builder.isShader( 'vertex' ) ) result = 'transformedNormal';
+				else result = 'geometryNormal';
+
+				break;
+
+			case NormalNode.LOCAL:
+
+				if ( builder.isShader( 'vertex' ) ) {
+
+					result = 'objectNormal';
+
+				} else {
+
+					builder.requires.normal = true;
+
+					result = 'vObjectNormal';
+
+				}
+
+				break;
+
+			case NormalNode.WORLD:
+
+				if ( builder.isShader( 'vertex' ) ) {
+
+					result = 'inverseTransformDirection( transformedNormal, viewMatrix ).xyz';
+
+				} else {
+
+					builder.requires.worldNormal = true;
+
+					result = 'vWNormal';
+
+				}
+
+				break;
+
+		}
+
+		return builder.format( result, this.getType( builder ), output );
 
 	}
 
-	deserialize( data ) {
+	copy( source ) {
 
-		super.deserialize( data );
+		super.copy( source );
 
-		this.scope = data.scope;
+		this.scope = source.scope;
+
+		return this;
+
+	}
+
+	toJSON( meta ) {
+
+		let data = this.getJSONNode( meta );
+
+		if ( ! data ) {
+
+			data = this.createJSONNode( meta );
+
+			data.scope = this.scope;
+
+		}
+
+		return data;
 
 	}
 
 }
 
-NormalNode.GEOMETRY = 'geometry';
 NormalNode.LOCAL = 'local';
-NormalNode.VIEW = 'view';
 NormalNode.WORLD = 'world';
+NormalNode.VIEW = 'view';
 
-export default NormalNode;
+NormalNode.prototype.nodeType = 'Normal';
 
-export const normalGeometry = nodeImmutable( NormalNode, NormalNode.GEOMETRY );
-export const normalLocal = nodeImmutable( NormalNode, NormalNode.LOCAL );
-export const normalView = nodeImmutable( NormalNode, NormalNode.VIEW );
-export const normalWorld = nodeImmutable( NormalNode, NormalNode.WORLD );
-export const transformedNormalView = label( normalView, 'TransformedNormalView' );
-export const transformedNormalWorld = transformedNormalView.transformDirection( cameraViewMatrix ).normalize();
+NodeLib.addKeyword( 'viewNormal', function () {
 
-addNodeClass( NormalNode );
+	return new NormalNode( NormalNode.VIEW );
+
+} );
+
+NodeLib.addKeyword( 'localNormal', function () {
+
+	return new NormalNode( NormalNode.NORMAL );
+
+} );
+
+NodeLib.addKeyword( 'worldNormal', function () {
+
+	return new NormalNode( NormalNode.WORLD );
+
+} );
+
+export { NormalNode };

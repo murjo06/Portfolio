@@ -1,89 +1,66 @@
-import Node, { addNodeClass } from './Node.js';
-import { addNodeElement, nodeProxy } from '../shadernode/ShaderNode.js';
+import { Node } from './Node.js';
 
 class VarNode extends Node {
 
-	constructor( node, name = null ) {
+	constructor( type, value ) {
 
-		super();
+		super( type );
 
-		this.node = node;
-		this.name = name;
+		this.value = value;
 
 	}
 
-	assign( node ) {
+	getType( builder ) {
 
-		node.traverse( ( childNode, replaceNode ) => {
+		return builder.getTypeByFormat( this.type );
 
-			if ( replaceNode && childNode.uuid === this.uuid ) {
+	}
 
-				replaceNode( this.node );
+	generate( builder, output ) {
 
-			}
+		const varying = builder.getVar( this.uuid, this.type );
 
-		} );
-		this.node = node;
+		if ( this.value && builder.isShader( 'vertex' ) ) {
+
+			builder.addNodeCode( varying.name + ' = ' + this.value.build( builder, this.getType( builder ) ) + ';' );
+
+		}
+
+		return builder.format( varying.name, this.getType( builder ), output );
+
+	}
+
+	copy( source ) {
+
+		super.copy( source );
+
+		this.type = source.type;
+		this.value = source.value;
+
 		return this;
 
 	}
 
-	isGlobal() {
+	toJSON( meta ) {
 
-		return true;
+		let data = this.getJSONNode( meta );
 
-	}
+		if ( ! data ) {
 
-	getHash( builder ) {
+			data = this.createJSONNode( meta );
 
-		return this.name || super.getHash( builder );
+			data.type = this.type;
 
-	}
-
-	getNodeType( builder ) {
-
-		return this.node.getNodeType( builder );
-
-	}
-
-	generate( builder ) {
-
-		const node = this.node;
-		const name = this.name;
-
-		if ( name === null && node.isTempNode === true ) {
-
-			return node.build( builder );
+			if ( this.value ) data.value = this.value.toJSON( meta ).uuid;
 
 		}
 
-		const type = builder.getVectorType( this.getNodeType( builder ) );
-
-		const snippet = node.build( builder, type );
-		const nodeVar = builder.getVarFromNode( this, type );
-
-		if ( name !== null ) {
-
-			nodeVar.name = name;
-
-		}
-
-		const propertyName = builder.getPropertyName( nodeVar );
-
-		builder.addLineFlowCode( `${propertyName} = ${snippet}` );
-
-		return propertyName;
+		return data;
 
 	}
 
 }
 
-export default VarNode;
+VarNode.prototype.nodeType = 'Var';
 
-export const label = nodeProxy( VarNode );
-export const temp = label;
-
-addNodeElement( 'label', label );
-addNodeElement( 'temp', temp );
-
-addNodeClass( VarNode );
+export { VarNode };

@@ -1,6 +1,10 @@
 {
   "dependencies": {
-    "three": "^0.153.0",
     "vite": "^4.3.9"
+  },
+  "devDependencies": {
+    "@types/dat.gui": "^0.7.10",
+    "dat.gui": "^0.7.9",
+    "three": "^0.134.0"
   }
 }

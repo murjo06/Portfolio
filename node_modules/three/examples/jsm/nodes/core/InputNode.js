@@ -1,83 +1,94 @@
-import Node, { addNodeClass } from './Node.js';
-import { getValueType, getValueFromType, arrayBufferToBase64 } from './NodeUtils.js';
+import { TempNode } from './TempNode.js';
 
-class InputNode extends Node {
+class InputNode extends TempNode {
 
-	constructor( value, nodeType = null ) {
+	constructor( type, params ) {
 
-		super( nodeType );
+		params = params || {};
+		params.shared = params.shared !== undefined ? params.shared : false;
 
-		this.isInputNode = true;
+		super( type, params );
 
-		this.value = value;
-		this.precision = null;
-
-	}
-
-	getNodeType( /*builder*/ ) {
-
-		if ( this.nodeType === null ) {
-
-			return getValueType( this.value );
-
-		}
-
-		return this.nodeType;
+		this.readonly = false;
 
 	}
 
-	getInputType( builder ) {
+	setReadonly( value ) {
 
-		return this.getNodeType( builder );
+		this.readonly = value;
 
-	}
-
-	setPrecision( precision ) {
-
-		this.precision = precision;
+		this.hashProperties = this.readonly ? [ 'value' ] : undefined;
 
 		return this;
 
 	}
 
-	serialize( data ) {
+	getReadonly( /* builder */ ) {
 
-		super.serialize( data );
-
-		data.value = this.value;
-
-		if ( this.value && this.value.toArray ) data.value = this.value.toArray();
-
-		data.valueType = getValueType( this.value );
-		data.nodeType = this.nodeType;
-
-		if ( data.valueType === 'ArrayBuffer' ) data.value = arrayBufferToBase64( data.value );
-
-		data.precision = this.precision;
+		return this.readonly;
 
 	}
 
-	deserialize( data ) {
+	copy( source ) {
 
-		super.deserialize( data );
+		super.copy( source );
 
-		this.nodeType = data.nodeType;
-		this.value = Array.isArray( data.value ) ? getValueFromType( data.valueType, ...data.value ) : data.value;
+		if ( source.readonly !== undefined ) this.readonly = source.readonly;
 
-		this.precision = data.precision || null;
-
-		if ( this.value && this.value.fromArray ) this.value = this.value.fromArray( data.value );
+		return this;
 
 	}
 
-	generate( /*builder, output*/ ) {
+	createJSONNode( meta ) {
 
-		console.warn( 'Abstract function.' );
+		const data = super.createJSONNode( meta );
+
+		if ( this.readonly === true ) data.readonly = this.readonly;
+
+		return data;
+
+	}
+
+	generate( builder, output, uuid, type, ns, needsUpdate ) {
+
+		uuid = builder.getUuid( uuid || this.getUuid() );
+		type = type || this.getType( builder );
+
+		const data = builder.getNodeData( uuid ),
+			readonly = this.getReadonly( builder ) && this.generateReadonly !== undefined;
+
+		if ( readonly ) {
+
+			return this.generateReadonly( builder, output, uuid, type, ns, needsUpdate );
+
+		} else {
+
+			if ( builder.isShader( 'vertex' ) ) {
+
+				if ( ! data.vertex ) {
+
+					data.vertex = builder.createVertexUniform( type, this, ns, needsUpdate, this.getLabel() );
+
+				}
+
+				return builder.format( data.vertex.name, type, output );
+
+			} else {
+
+				if ( ! data.fragment ) {
+
+					data.fragment = builder.createFragmentUniform( type, this, ns, needsUpdate, this.getLabel() );
+
+				}
+
+				return builder.format( data.fragment.name, type, output );
+
+			}
+
+		}
 
 	}
 
 }
 
-export default InputNode;
-
-addNodeClass( InputNode );
+export { InputNode };

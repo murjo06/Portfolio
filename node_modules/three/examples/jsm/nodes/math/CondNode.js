@@ -1,28 +1,27 @@
-import Node, { addNodeClass } from '../core/Node.js';
-import { property } from '../core/PropertyNode.js';
-import { context as contextNode } from '../core/ContextNode.js';
-import { addNodeElement, nodeProxy } from '../shadernode/ShaderNode.js';
+import { TempNode } from '../core/TempNode.js';
 
-class CondNode extends Node {
+class CondNode extends TempNode {
 
-	constructor( condNode, ifNode, elseNode = null ) {
+	constructor( a, b, op, ifNode, elseNode ) {
 
 		super();
 
-		this.condNode = condNode;
+		this.a = a;
+		this.b = b;
+
+		this.op = op;
 
 		this.ifNode = ifNode;
 		this.elseNode = elseNode;
 
 	}
 
-	getNodeType( builder ) {
+	getType( builder ) {
 
-		const ifType = this.ifNode.getNodeType( builder );
+		if ( this.ifNode ) {
 
-		if ( this.elseNode !== null ) {
-
-			const elseType = this.elseNode.getNodeType( builder );
+			const ifType = this.ifNode.getType( builder );
+			const elseType = this.elseNode.getType( builder );
 
 			if ( builder.getTypeLength( elseType ) > builder.getTypeLength( ifType ) ) {
 
@@ -30,57 +29,101 @@ class CondNode extends Node {
 
 			}
 
+			return ifType;
+
 		}
 
-		return ifType;
+		return 'b';
 
 	}
 
-	generate( builder ) {
+	getCondType( builder ) {
 
-		const type = this.getNodeType( builder );
-		const context = { tempWrite: false };
+		if ( builder.getTypeLength( this.b.getType( builder ) ) > builder.getTypeLength( this.a.getType( builder ) ) ) {
 
-		const { ifNode, elseNode } = this;
-
-		const needsProperty = ifNode.getNodeType( builder ) !== 'void' || ( elseNode && elseNode.getNodeType( builder ) !== 'void' );
-		const nodeProperty = needsProperty ? property( type ).build( builder ) : '';
-
-		const nodeSnippet = contextNode( this.condNode/*, context*/ ).build( builder, 'bool' );
-
-		builder.addFlowCode( `\n${ builder.tab }if ( ${ nodeSnippet } ) {\n\n` ).addFlowTab();
-
-		let ifSnippet = contextNode( this.ifNode, context ).build( builder, type );
-
-		ifSnippet = needsProperty ? nodeProperty + ' = ' + ifSnippet + ';' : ifSnippet;
-
-		builder.removeFlowTab().addFlowCode( builder.tab + '\t' + ifSnippet + '\n\n' + builder.tab + '}' );
-
-		if ( elseNode !== null ) {
-
-			builder.addFlowCode( ' else {\n\n' ).addFlowTab();
-
-			let elseSnippet = contextNode( elseNode, context ).build( builder, type );
-			elseSnippet = nodeProperty ? nodeProperty + ' = ' + elseSnippet + ';' : elseSnippet;
-
-			builder.removeFlowTab().addFlowCode( builder.tab + '\t' + elseSnippet + '\n\n' + builder.tab + '}\n\n' );
-
-		} else {
-
-			builder.addFlowCode( '\n\n' );
+			return this.b.getType( builder );
 
 		}
 
-		return nodeProperty;
+		return this.a.getType( builder );
+
+	}
+
+	generate( builder, output ) {
+
+		const type = this.getType( builder ),
+			condType = this.getCondType( builder ),
+			a = this.a.build( builder, condType ),
+			b = this.b.build( builder, condType );
+
+		let code;
+
+		if ( this.ifNode ) {
+
+			const ifCode = this.ifNode.build( builder, type ),
+				elseCode = this.elseNode.build( builder, type );
+
+			code = '( ' + [ a, this.op, b, '?', ifCode, ':', elseCode ].join( ' ' ) + ' )';
+
+		} else {
+
+			code = '( ' + a + ' ' + this.op + ' ' + b + ' )';
+
+		}
+
+		return builder.format( code, this.getType( builder ), output );
+
+	}
+
+	copy( source ) {
+
+		super.copy( source );
+
+		this.a = source.a;
+		this.b = source.b;
+
+		this.op = source.op;
+
+		this.ifNode = source.ifNode;
+		this.elseNode = source.elseNode;
+
+		return this;
+
+	}
+
+	toJSON( meta ) {
+
+		let data = this.getJSONNode( meta );
+
+		if ( ! data ) {
+
+			data = this.createJSONNode( meta );
+
+			data.a = this.a.toJSON( meta ).uuid;
+			data.b = this.b.toJSON( meta ).uuid;
+
+			data.op = this.op;
+
+			if ( data.ifNode ) data.ifNode = this.ifNode.toJSON( meta ).uuid;
+			if ( data.elseNode ) data.elseNode = this.elseNode.toJSON( meta ).uuid;
+
+		}
+
+		return data;
 
 	}
 
 }
 
-export default CondNode;
+CondNode.EQUAL = '==';
+CondNode.NOT_EQUAL = '!=';
+CondNode.GREATER = '>';
+CondNode.GREATER_EQUAL = '>=';
+CondNode.LESS = '<';
+CondNode.LESS_EQUAL = '<=';
+CondNode.AND = '&&';
+CondNode.OR = '||';
 
-export const cond = nodeProxy( CondNode );
+CondNode.prototype.nodeType = 'Cond';
 
-addNodeElement( 'cond', cond );
-
-addNodeClass( CondNode );
+export { CondNode };
