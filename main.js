@@ -17,6 +17,49 @@ followCamPivot.rotation.order = "YXZ";
 const cameraOffset = new Vector3(-10, 4, 0);
 followCamPivot.position.copy(cameraOffset);
 
+const langPack = {
+    en: [
+        "Press W and S to rotate vertically",
+        "Press A and D to rotate horizontally",
+        "Press Z and X to flip",
+        "Hey, my name's Mark",
+        "I'm a programmer and web developer",
+        "I also like aerospace engineering",
+        "I currently study at Gimnazija Bežigrad",
+        "Started programming in Scratch at elementary school",
+        "Went on to learning C# on my own",
+        "Tried game development in Unity",
+        "Then learned HTML, CSS, JavaScript and Python",
+        "Learned C and C++ for Arduino programming",
+        "Tried programming and simulating rocket flights",
+        "Got my first major gig at middas.mx using WordPress",
+        "Started learning Go",
+        "Begun my personal project in Svelte with node.js for backend",
+        "",
+        ""
+    ],
+    si: [
+        "Pritisni W in S za obračanje navzgor",
+        "Pritisni A in D za obračanje levo in desno",
+        "Pritisni Z in X za obračanje okoli osi",
+        "Zdravo, sem Mark",
+        "Sem programer in spletni developer",
+        "Imam tudi rad strojništvo",
+        "Trenutno sem dijak na Gimnaziji Bežigrad",
+        "Začel sem programirati v Scratchu v osnovni šoli",
+        "Kasneje sem se učil C# na samem",
+        "Nato sem delal igrice v Unityju",
+        "Naučil sem se HTML, CSS, JavaScript in Python",
+        "Programiral sem v C in C++ za Arduino",
+        "Simuliral sem lete raket",
+        "Začel sem delati za stranke na spletni strani middas.mx v WordPressu",
+        "Učil sem se učiti Go",
+        "Ustvaril sem svoj projekt v Sveltu z node.js-om",
+        "",
+        ""
+    ]
+};
+
 const gravity = 10;
 const thrust = 50;
 const terminalVelocity = 10;
@@ -55,26 +98,12 @@ const ringPositions = [
     new Vector3(900, 10, -10),
     new Vector3(900, 10, 10)
 ];
-const ringMessages = [
-    "Press W and S to rotate vertically",
-    "Press A and D to rotate horizontally",
-    "Press Z and X to flip",
-    "Hey, my name's Mark",
-    "I'm a programmer and web developer",
-    "I also like aerospace engineering",
-    "I currently study at Gimnazija Bežigrad",
-    "Started programming in Scratch at elementary school",
-    "Went on to learning C# on my own",
-    "Tried game development in Unity",
-    "Then leared HTML, CSS, JavaScript and Python",
-    "Learned C and C++ for Arduino programming",
-    "Tried programming and simulating rocket flights",
-    "Got my first major gig at middas.mx using WordPress",
-    "Started learning Go",
-    "Begun my personal project in Svelte with node.js for backend",
-    "",
-    ""
-];
+const ui = document.querySelector("#content");
+const query = new URLSearchParams(window.location.search);
+if(query.get("lang") == "si") {
+    ui.textContent = "Pritisni presledek za prižig motorja";
+}
+const ringMessages = (query.get("lang") == "si") ? langPack.si : langPack.en;
 const ringScale = 5;
 const ringWidth = 0.5;
 const ringRotations = [];
@@ -86,8 +115,6 @@ let rotationTimer = 0;
 let flipping = false;
 let flipTimer = 0;
 let flipDuration = 0;
-
-const ui = document.querySelector("#content");
 
 const ringLoader = new GLTFLoader();
 ringLoader.load("models/ring/ring.gltf", function(gltf) {
@@ -284,12 +311,12 @@ loader.load("models/plane/plane_body.gltf", function(gltf) {
                     closestRing = i;
                 }
             }
-            if(closestRing < 16) {
-                if(isInRing(ringPositions[closestRing], ringScale)) {
-                    onRingPass(closestRing);
-                } else {
-                    window.open(ringRedirects[closestRing], "_self");
-                }
+            if(isInRing(ringPositions[closestRing], ringScale)) {
+                    if(closestRing < 16) {
+                        onRingPass(closestRing);
+                    } else {
+                        window.open(ringRedirects[closestRing], "_self");
+                    }
             }
             let includesW = pressedKeys.includes("w") || pressedKeys.includes("W");
             let includesS = pressedKeys.includes("s") || pressedKeys.includes("S");
