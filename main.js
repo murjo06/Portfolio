@@ -6,7 +6,8 @@ import { Vector3, Clock } from "three";
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer();
+const renderer = new THREE.WebGLRenderer({antialias: false});
+renderer.setPixelRatio(Math.round(window.devicePixelRatio * 0.4));
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 const ambientLight = new THREE.AmbientLight(0x404040, 7);
@@ -289,6 +290,7 @@ loader.load("models/plane/plane_body.gltf", function(gltf) {
             16: "https://middas.mx",
             17: "https://github.com/murjo06"
         };
+        console.log(renderer.info.render.triangles);
 
         function animate() {
             if(!animatedBefore) {
@@ -349,7 +351,7 @@ loader.load("models/plane/plane_body.gltf", function(gltf) {
             }
             planeBody.applyForce(new Vector3(0, -gravity * planeBody.mass, 0));
             let thrustForce = getThrust(includesSpace ? 1 : 0, plane.quaternion);
-            let thrustMagnitude = thrustForce.length();
+            let thrustMagnitude = includesSpace ? thrust : 0;
             started = previousThrust == 0 && thrustMagnitude != 0;
             if(started) {
                 spinning = true;
