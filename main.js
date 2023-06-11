@@ -18,7 +18,7 @@ const cameraOffset = new Vector3(-10, 4, 0);
 followCamPivot.position.copy(cameraOffset);
 
 const gravity = 10;
-const thrust = 5000;
+const thrust = 50;
 const terminalVelocity = 10;
 const rotationSpeed = 0.1;
 const rotationOverlap = 0.1;
@@ -31,15 +31,39 @@ const minFlip = 0.4;
 const maxFlip = 2;
 const maxFlipSpeed = 0.2;
 const resistance = 2;
-const propellerSpeed = 12;
+const propellerSpeed = 15;
 const startPlaneDuration = 1.5;
 const stopPlaneDuration = 2.5;
 
-const ringPositions = [new Vector3(40, 0, 0)];
-const ringMessages = ["How did you get here?"];
+const ringPositions = [
+    new Vector3(40, -20, 0),
+    new Vector3(100, -10, 0),
+    new Vector3(170, 15, 20),
+    new Vector3(260, 0, -5),
+    new Vector3(320, -10, 0),
+    new Vector3(370, 10, 5)
+];
+const ringMessages = [
+    "Press W and S to rotate vertically",
+    "Press A and D to rotate horizontally",
+    "Press Z and X to flip",
+    "Hey, my name's Mark",
+    "I'm a programmer and web developer",
+    "I also like aerospace engineering",
+    "I currently study at Gimnazija Bežigrad",
+    "Started programming in Scratch at elementary school",
+    "Went on to learning C# on my own",
+    "Tried game development in Unity",
+    "Then leared HTML, CSS, JavaScript and Python",
+    "Learned C and C++ for Arduino programming",
+    "Tried programming and simulating rocket flights",
+    "Got my first major gig at middas.mx using WordPress",
+    "Started learning Go",
+    "Begun my personal project in Svelte with node.js for backend"
+];
 const ringScale = 5;
 const ringWidth = 0.5;
-const rotations = [];
+const ringRotations = [];
 
 let rotating = false;
 let rotationDirection = [0, 0];
@@ -49,16 +73,29 @@ let flipping = false;
 let flipTimer = 0;
 let flipDuration = 0;
 
+const ui = document.querySelector("#content");
+
 const ringLoader = new GLTFLoader();
 ringLoader.load("models/ring.gltf", function(gltf) {
-    for(let i = 0; i < ringPositions.length; i++) {
+    for(let i = 0; i < 3; i++) {
         let ring = new THREE.Object3D().copy(gltf.scene);
         scene.add(ring);
-        ring.position.set(ringPositions[i].x, ringPositions[i].y, ringPositions[i].z);
+        ring.position.copy(ringPositions[i]);
         ring.scale.multiplyScalar(ringScale);
     }
 }, undefined, function(error) {
     console.error(error);
+});
+const personalRingLoader = new GLTFLoader();
+personalRingLoader.load("models/ring_personal.gltf", function(gltf) {
+    for(let i = 3; i < ringPositions.length; i++) {
+        let ring = new THREE.Object3D().copy(gltf.scene);
+        scene.add(ring);
+        ring.position.copy(ringPositions[i]);
+        ring.scale.multiplyScalar(ringScale);
+    }
+}, undefined, function(error) {
+    console.log(error);
 });
 
 const loader = new GLTFLoader();
@@ -103,39 +140,6 @@ loader.load("models/plane/plane_body.gltf", function(gltf) {
             renderer.render(scene, camera);
         }
         initSky();
-        function initIslands() {
-            const enviromentIslands = 1;
-            const activeIslands = 0;
-            const positions = [[new Vector3(15, 15, 15)], []];
-            const sizes = [[8], []];
-            for(let i = 0; i < enviromentIslands; i++) {
-                let loader = new GLTFLoader();
-                loader.load(`models/islands/env_${i}.gltf`, function(gltf) {
-                    let mesh = gltf.scene;
-                    mesh.position.x = positions[0][i].x;
-                    mesh.position.y = positions[0][i].y;
-                    mesh.position.z = positions[0][i].z;
-                    mesh.scale.multiplyScalar(sizes[0][i]);
-                    scene.add(mesh);
-                }, undefined, function(error) {
-                    console.error(error);
-                });
-            }
-            for(let i = 0; i < activeIslands; i++) {
-                let loader = new GLTFLoader();
-                loader.load(`models/islands/act_${i}.gltf`, function(gltf) {
-                    let mesh = gltf.scene;
-                    mesh.position.x = positions[0][i].x;
-                    mesh.position.y = positions[0][i].y;
-                    mesh.position.z = positions[0][i].z;
-                    mesh.scale.multiplyScalar(sizes[0][i]);
-                    scene.add(mesh);
-                }, undefined, function(error) {
-                    console.error(error);
-                });
-            }
-        }
-        initIslands();
 
         const pressedKeys = [];
 
@@ -147,16 +151,24 @@ loader.load("models/plane/plane_body.gltf", function(gltf) {
             return this;
         }
 
+        let animatedBefore = false;
+        let animated = false;
+
         document.addEventListener("keydown", function(event) {
             if(!pressedKeys.includes(event.key)) {
                 pressedKeys.push(event.key);
+            }
+            if(event.key == " ") {
+                animatedBefore = true;
+                clock.start();
+                animate();
             }
         });
         document.addEventListener("keyup", function(event) {
             pressedKeys.remove(event.key);
         });
 
-        const clock = new Clock(true);
+        const clock = new Clock(false);
 
         function getThrust(multiplier, quaternion) {
             return new Vector3(thrust * multiplier, 0, 0).applyQuaternion(quaternion);
@@ -199,16 +211,38 @@ loader.load("models/plane/plane_body.gltf", function(gltf) {
         let stopping = false;
         let stopTimer = 0;
 
+        function onRingPass(ring) {
+            ui.textContent = ringMessages[ring];
+        }
+
+        let worldPosition = new Vector3();
+        followCamPivot.getWorldPosition(worldPosition);
+        camera.position.copy(worldPosition);
+        camera.lookAt(new Vector3(plane.position.x, followCamPivot.position.y + plane.position.y, plane.position.z));
+
         function animate() {
-        	requestAnimationFrame(animate);
+            if(!animatedBefore) {
+                if(!animated) {
+                    requestAnimationFrame(animate);
+                    animated = true;
+                }
+            } else {
+                requestAnimationFrame(animate);
+            }
             let maxDistance = 0;
             let closestRing = 0;
             for(let i = 0; i < ringPositions.length; i++) {
-                let dst = ringPositions[i].clone().distanceToSquared(plane.position);
-                if(dst > maxDistance) {
+                let dst = ringPositions[i].distanceToSquared(plane.position);
+                if(i == 0) {
+                    maxDistance = dst;
+                }
+                if(dst < maxDistance) {
                     maxDistance = dst;
                     closestRing = i;
                 }
+            }
+            if(isInRing(ringPositions[closestRing], ringScale)) {
+                onRingPass(closestRing);
             }
             let includesW = pressedKeys.includes("w") || pressedKeys.includes("W");
             let includesS = pressedKeys.includes("s") || pressedKeys.includes("S");
@@ -316,7 +350,7 @@ loader.load("models/plane/plane_body.gltf", function(gltf) {
                     rotationDirection = [0, 0];
                 }
             }
-            let worldPosition = new Vector3();
+            worldPosition = new Vector3();
             followCamPivot.getWorldPosition(worldPosition);
             camera.position.copy(worldPosition);
             camera.lookAt(new Vector3(plane.position.x, followCamPivot.position.y + plane.position.y, plane.position.z));
