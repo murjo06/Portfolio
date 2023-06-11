@@ -41,7 +41,19 @@ const ringPositions = [
     new Vector3(170, 15, 20),
     new Vector3(260, 0, -5),
     new Vector3(320, -10, 0),
-    new Vector3(370, 10, 5)
+    new Vector3(370, 10, 5),
+    new Vector3(410, 0, -5),
+    new Vector3(450, -20, 10),
+    new Vector3(500, -5, 0),
+    new Vector3(540, 5, 15),
+    new Vector3(590, 30, 10),
+    new Vector3(640, 50, 0),
+    new Vector3(690, 25, -5),
+    new Vector3(750, 0, 5),
+    new Vector3(800, -30, 0),
+    new Vector3(850, 0, 0),
+    new Vector3(900, 10, -5),
+    new Vector3(900, 10, 5)
 ];
 const ringMessages = [
     "Press W and S to rotate vertically",
@@ -59,7 +71,9 @@ const ringMessages = [
     "Tried programming and simulating rocket flights",
     "Got my first major gig at middas.mx using WordPress",
     "Started learning Go",
-    "Begun my personal project in Svelte with node.js for backend"
+    "Begun my personal project in Svelte with node.js for backend",
+    "",
+    ""
 ];
 const ringScale = 5;
 const ringWidth = 0.5;
@@ -76,7 +90,7 @@ let flipDuration = 0;
 const ui = document.querySelector("#content");
 
 const ringLoader = new GLTFLoader();
-ringLoader.load("models/ring.gltf", function(gltf) {
+ringLoader.load("models/ring/ring.gltf", function(gltf) {
     for(let i = 0; i < 3; i++) {
         let ring = new THREE.Object3D().copy(gltf.scene);
         scene.add(ring);
@@ -87,7 +101,7 @@ ringLoader.load("models/ring.gltf", function(gltf) {
     console.error(error);
 });
 const personalRingLoader = new GLTFLoader();
-personalRingLoader.load("models/ring_personal.gltf", function(gltf) {
+personalRingLoader.load("models/ring/ring_personal.gltf", function(gltf) {
     for(let i = 3; i < ringPositions.length; i++) {
         let ring = new THREE.Object3D().copy(gltf.scene);
         scene.add(ring);
@@ -95,7 +109,23 @@ personalRingLoader.load("models/ring_personal.gltf", function(gltf) {
         ring.scale.multiplyScalar(ringScale);
     }
 }, undefined, function(error) {
-    console.log(error);
+    console.error(error);
+});
+const middasLoader = new GLTFLoader();
+middasLoader.load("models/ring/ring_middas.gltf", function(gltf) {
+    const middas = new THREE.Object3D().copy(gltf.scene);
+    scene.add(middas);
+    middas.position.copy(ringPositions[16]);
+}, undefined, function(error) {
+    console.error(error);
+});
+const githubLoader = new GLTFLoader();
+githubLoader.load("models/ring/ring_middas.gltf", function(gltf) {
+    const github = new THREE.Object3D().copy(gltf.scene);
+    scene.add(github);
+    github.position.copy(ringPositions[17]);
+}, undefined, function(error) {
+    console.error(error);
 });
 
 const loader = new GLTFLoader();
@@ -220,6 +250,11 @@ loader.load("models/plane/plane_body.gltf", function(gltf) {
         camera.position.copy(worldPosition);
         camera.lookAt(new Vector3(plane.position.x, followCamPivot.position.y + plane.position.y, plane.position.z));
 
+        const ringRedirects = {
+            16: "https://www.middas.mx",
+            17: "https://github.com/murjo06"
+        };
+
         function animate() {
             if(!animatedBefore) {
                 if(!animated) {
@@ -241,8 +276,12 @@ loader.load("models/plane/plane_body.gltf", function(gltf) {
                     closestRing = i;
                 }
             }
-            if(isInRing(ringPositions[closestRing], ringScale)) {
-                onRingPass(closestRing);
+            if(closestRing < 16) {
+                if(isInRing(ringPositions[closestRing], ringScale)) {
+                    onRingPass(closestRing);
+                }
+            } else {
+                window.open(ringRedirects[closestRing], "_self");
             }
             let includesW = pressedKeys.includes("w") || pressedKeys.includes("W");
             let includesS = pressedKeys.includes("s") || pressedKeys.includes("S");
