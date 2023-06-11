@@ -41,7 +41,14 @@
                 }
             }
         </script>
-        <script type="module" defer>
+	</head>
+	<body>
+        <div id="ui">
+            <div id="wrapper">
+                <div id="content">Hold space to turn on the engine</div>
+            </div>
+        </div>
+        <script type="module">
             import * as THREE from "three";
 import { Sky } from "./sky.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
@@ -409,12 +416,5 @@ loader.load("models/plane/plane_body.gltf", function(gltf) {
     console.error(error);
 });
         </script>
-	</head>
-	<body>
-        <div id="ui">
-            <div id="wrapper">
-                <div id="content">Hold space to turn on the engine</div>
-            </div>
-        </div>
 	</body>
 </html>
