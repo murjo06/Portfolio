@@ -52,8 +52,8 @@ const ringPositions = [
     new Vector3(750, 0, 5),
     new Vector3(800, -30, 0),
     new Vector3(850, 0, 0),
-    new Vector3(900, 10, -5),
-    new Vector3(900, 10, 5)
+    new Vector3(900, 10, -10),
+    new Vector3(900, 10, 10)
 ];
 const ringMessages = [
     "Press W and S to rotate vertically",
@@ -102,7 +102,7 @@ ringLoader.load("models/ring/ring.gltf", function(gltf) {
 });
 const personalRingLoader = new GLTFLoader();
 personalRingLoader.load("models/ring/ring_personal.gltf", function(gltf) {
-    for(let i = 3; i < ringPositions.length; i++) {
+    for(let i = 3; i < ringPositions.length - 2; i++) {
         let ring = new THREE.Object3D().copy(gltf.scene);
         scene.add(ring);
         ring.position.copy(ringPositions[i]);
@@ -116,14 +116,24 @@ middasLoader.load("models/ring/ring_middas.gltf", function(gltf) {
     const middas = new THREE.Object3D().copy(gltf.scene);
     scene.add(middas);
     middas.position.copy(ringPositions[16]);
+    middas.scale.multiplyScalar(ringScale);
+    let light = new THREE.PointLight(0xffffff, 0.1, 2 * ringScale);
+    scene.add(light);
+    light.position.copy(ringPositions[16]);
+    light.position.x -= 0.1;
 }, undefined, function(error) {
     console.error(error);
 });
 const githubLoader = new GLTFLoader();
-githubLoader.load("models/ring/ring_middas.gltf", function(gltf) {
+githubLoader.load("models/ring/ring_github.gltf", function(gltf) {
     const github = new THREE.Object3D().copy(gltf.scene);
     scene.add(github);
     github.position.copy(ringPositions[17]);
+    github.scale.multiplyScalar(ringScale);
+    let light = new THREE.PointLight(0xffffff, 1, 2 * ringScale);
+    scene.add(light);
+    light.position.copy(ringPositions[17]);
+    light.position.x -= 0.1;
 }, undefined, function(error) {
     console.error(error);
 });
@@ -162,10 +172,8 @@ loader.load("models/plane/plane_body.gltf", function(gltf) {
             uniforms["mieDirectionalG"].value = effectController.mieDirectionalG;
             const phi = THREE.MathUtils.degToRad(90 - effectController.elevation);
             const theta = THREE.MathUtils.degToRad(effectController.azimuth);
-            sun.setFromSphericalCoords(1, phi, theta);
-            sunLight.position.x = sun.x;
-            sunLight.position.y = sun.y;
-            sunLight.position.z = sun.z;
+            sun.setFromSphericalCoords(45000, phi, theta);
+            sunLight.position.copy(sun);
             uniforms["sunPosition"].value.copy(sun);
             renderer.render(scene, camera);
         }
@@ -251,7 +259,7 @@ loader.load("models/plane/plane_body.gltf", function(gltf) {
         camera.lookAt(new Vector3(plane.position.x, followCamPivot.position.y + plane.position.y, plane.position.z));
 
         const ringRedirects = {
-            16: "https://www.middas.mx",
+            16: "https://middas.mx",
             17: "https://github.com/murjo06"
         };
 
@@ -279,9 +287,9 @@ loader.load("models/plane/plane_body.gltf", function(gltf) {
             if(closestRing < 16) {
                 if(isInRing(ringPositions[closestRing], ringScale)) {
                     onRingPass(closestRing);
+                } else {
+                    window.open(ringRedirects[closestRing], "_self");
                 }
-            } else {
-                window.open(ringRedirects[closestRing], "_self");
             }
             let includesW = pressedKeys.includes("w") || pressedKeys.includes("W");
             let includesS = pressedKeys.includes("s") || pressedKeys.includes("S");
