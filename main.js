@@ -53,6 +53,7 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 const ambientLight = new THREE.AmbientLight(0x404040, 7);
 scene.add(ambientLight);
+const piHalves = Math.PI / 2;
 
 const followCamPivot = new THREE.Object3D();
 followCamPivot.rotation.order = "YXZ";
@@ -103,8 +104,8 @@ const langPack = {
 };
 
 const gravity = 10;
-const thrust = 200;
-const terminalVelocity = 10;
+const thrust = 2000;
+const terminalVelocity = 100;
 const rotationSpeed = 0.1;
 const rotationOverlap = 0.1;
 const rotationOverlapMultiplier = 0.01;
@@ -187,6 +188,7 @@ middasLoader.load("models/ring/ring_middas.gltf", function(gltf) {
     scene.add(middas);
     middas.position.copy(ringPositions[16]);
     middas.scale.multiplyScalar(ringScale);
+    middas.rotateOnAxis(new Vector3(1, 0, 0), piHalves);
     let light = new THREE.PointLight(0xffffff, 0.1, 2 * ringScale);
     scene.add(light);
     light.position.copy(ringPositions[16]);
@@ -200,7 +202,8 @@ githubLoader.load("models/ring/ring_github.gltf", function(gltf) {
     scene.add(github);
     github.position.copy(ringPositions[17]);
     github.scale.multiplyScalar(ringScale);
-    let light = new THREE.PointLight(0xffffff, 1, 2 * ringScale);
+    github.rotateOnAxis(new Vector3(1, 0, 0), piHalves);
+    let light = new THREE.PointLight(0xffffff, 0.1, 2 * ringScale);
     scene.add(light);
     light.position.copy(ringPositions[17]);
     light.position.x -= 0.1;
