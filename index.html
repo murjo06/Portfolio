@@ -291,11 +291,7 @@ loader.load("models/plane/plane_body.gltf", function(gltf) {
             return new Vector3(thrust * multiplier, 0, 0).applyQuaternion(quaternion);
         }
         function getResistance(multiplier, speed, normal) {
-            return  new Vector3(
-                -resistance * multiplier * speed * speed,
-                -resistance * multiplier * speed * speed,
-                -resistance * multiplier * speed * speed
-            ).multiply(normal.clone().negate());
+            return  new Vector3(resistance * multiplier * speed * speed, 0, 0).applyQuaternion(plane.quaternion).negate();
         }
         function timingFunction(x) {
             return (Math.sin(x - piHalves) + 1) / 0.46;
@@ -314,7 +310,13 @@ loader.load("models/plane/plane_body.gltf", function(gltf) {
             let end = new Vector3(ringPosition.x + ringWidth, ringPosition.y, ringPosition.z);
             let p = plane.position.clone();
             let con1 = (p.clone().sub(start)).dot(end.clone().sub(start)) >= 0;
+            if(!con1) {
+                return false;
+            }
             let con2 = (p.clone().sub(end)).dot(end.clone().sub(start)) <= 0;
+            if(!con2) {
+                return false;
+            }
             let con3 = p.clone().sub(start).cross(end.clone().sub(start)).length() / end.clone().sub(start).length() <= radius;
             return con1 && con2 && con3;
         }
