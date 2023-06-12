@@ -366,7 +366,7 @@ loader.load("models/plane/plane_body.gltf", function(gltf) {
             let horizontalDirection = (includesD ? 1 : 0) + (includesA ? -1 : 0);
             let includesSpace = pressedKeys.includes(" ");
             let includesShift = pressedKeys.includes("Shift");
-            let lMouse = (lang == "si") ? (pressedKeys.includes("y") || pressedKeys.includes("Y") ? 1 : 0) : (pressedKeys.includes("z") || pressedKeys.includes("Z") ? 1 : 0);
+            let lMouse = pressedKeys.includes("y") || pressedKeys.includes("Y") || pressedKeys.includes("z") || pressedKeys.includes("Z") ? 1 : 0;
             let rMouse = pressedKeys.includes("x") || pressedKeys.includes("X") ? -1 : 0;
             let delta = clock.getDelta();
             if(lMouse + rMouse != 0) {
