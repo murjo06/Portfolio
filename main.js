@@ -62,7 +62,7 @@ const langPack = {
 };
 
 const gravity = 10;
-const thrust = 50;
+const thrust = 200;
 const terminalVelocity = 10;
 const rotationSpeed = 0.1;
 const rotationOverlap = 0.1;
@@ -74,7 +74,7 @@ const flipOverlapMultiplier = 0;
 const minFlip = 0.4;
 const maxFlip = 2;
 const maxFlipSpeed = 0.2;
-const resistance = 2;
+const resistance = 0.002;
 const propellerSpeed = 15;
 const startPlaneDuration = 1.5;
 const stopPlaneDuration = 2.5;
@@ -240,7 +240,7 @@ loader.load("models/plane/plane_body.gltf", function(gltf) {
             return new Vector3(thrust * multiplier, 0, 0).applyQuaternion(quaternion);
         }
         function getResistance(multiplier, speed, normal) {
-            return new Vector3(resistance * multiplier * speed * speed, 0, 0).applyQuaternion(plane.quaternion).negate();
+            return normal.clone().multiplyScalar(resistance * multiplier * speed * speed).applyQuaternion(plane.quaternion).negate();
         }
         function timingFunction(x) {
             return x * x;
@@ -292,7 +292,6 @@ loader.load("models/plane/plane_body.gltf", function(gltf) {
             16: "https://middas.mx",
             17: "https://github.com/murjo06"
         };
-        console.log(renderer.info.render.triangles);
 
         function animate() {
             if(!animatedBefore) {
@@ -394,7 +393,7 @@ loader.load("models/plane/plane_body.gltf", function(gltf) {
             previousThrust = thrustMagnitude;
             planeBody.applyForce(thrustForce);
             let normalThrust = thrustForce.clone().normalize();
-            let drag = getResistance(includesShift ? 50 : 1, planeBody.speed, normalThrust);
+            let drag = getResistance(includesShift ? 5 : 1, planeBody.speed, normalThrust);
             planeBody.applyForce(drag);
             planeBody.velocity.x += planeBody.acceleration.x * delta;
             planeBody.velocity.y += planeBody.acceleration.y * delta;
