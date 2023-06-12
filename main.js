@@ -104,8 +104,8 @@ const langPack = {
 };
 
 const gravity = 10;
-const thrust = 2000;
-const terminalVelocity = 100;
+const thrust = 200;
+const terminalVelocity = 10;
 const rotationSpeed = 0.1;
 const rotationOverlap = 0.1;
 const rotationOverlapMultiplier = 0.01;
