@@ -4,6 +4,48 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { Body } from "./physics.js";
 import { Vector3, Clock } from "three";
 
+const maxTitleLength = 20;
+document.title = "🛩️________________☀️___";
+let currentPlaneEmoji = 1;
+const sunEmoji = 17;
+let titleSpeed = 300;
+let emptyString = "_";
+let planeMoving = false;
+function setTitle() {
+    setTimeout(() => {
+        if(planeMoving) {
+            let title = "";
+            if(currentPlaneEmoji < sunEmoji) {
+                title = emptyString.repeat(currentPlaneEmoji);
+                title += "🛩️";
+                title += emptyString.repeat(sunEmoji - currentPlaneEmoji - 1);
+                title += "☀️";
+                title += emptyString.repeat(maxTitleLength - sunEmoji);
+            }
+            if(currentPlaneEmoji == sunEmoji) {
+                title = emptyString.repeat(currentPlaneEmoji);
+                title += "🛩️";
+                title += emptyString.repeat(maxTitleLength - currentPlaneEmoji);
+            }
+            if(currentPlaneEmoji > sunEmoji) {
+                title = emptyString.repeat(sunEmoji);
+                title += "☀️";
+                title += emptyString.repeat(currentPlaneEmoji - sunEmoji - 1);
+                title += "🛩️";
+                title += emptyString.repeat(maxTitleLength - currentPlaneEmoji);
+            }
+            console.log(title.length);
+            document.title = title;
+            currentPlaneEmoji += 1;
+            if(currentPlaneEmoji == maxTitleLength - 1) {
+                currentPlaneEmoji = 0;
+            }
+        }
+        setTitle();
+    }, titleSpeed);
+}
+setTitle();
+
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({antialias: false});
@@ -101,10 +143,11 @@ const ringPositions = [
 ];
 const ui = document.querySelector("#content");
 const query = new URLSearchParams(window.location.search);
-if(query.get("lang") == "si") {
+const lang = query.get("lang");
+if(lang == "si") {
     ui.textContent = "Pritisni presledek za prižig motorja";
 }
-const ringMessages = (query.get("lang") == "si") ? langPack.si : langPack.en;
+const ringMessages = (lang == "si") ? langPack.si : langPack.en;
 const ringScale = 5;
 const ringWidth = 0.5;
 const ringRotations = [];
@@ -294,14 +337,6 @@ loader.load("models/plane/plane_body.gltf", function(gltf) {
         };
 
         function animate() {
-            if(!animatedBefore) {
-                if(!animated) {
-                    requestAnimationFrame(animate);
-                    animated = true;
-                }
-            } else {
-                requestAnimationFrame(animate);
-            }
             let maxDistance = 0;
             let closestRing = 0;
             for(let i = 0; i < ringPositions.length; i++) {
@@ -329,7 +364,7 @@ loader.load("models/plane/plane_body.gltf", function(gltf) {
             let horizontalDirection = (includesD ? 1 : 0) + (includesA ? -1 : 0);
             let includesSpace = pressedKeys.includes(" ");
             let includesShift = pressedKeys.includes("Shift");
-            let lMouse = pressedKeys.includes("z") || pressedKeys.includes("Z") ? 1 : 0;
+            let lMouse = (lang == "si") ? (pressedKeys.includes("y") || pressedKeys.includes("Y") ? 1 : 0) : (pressedKeys.includes("z") || pressedKeys.includes("Z") ? 1 : 0);
             let rMouse = pressedKeys.includes("x") || pressedKeys.includes("X") ? -1 : 0;
             let delta = clock.getDelta();
             if(lMouse + rMouse != 0) {
@@ -403,6 +438,7 @@ loader.load("models/plane/plane_body.gltf", function(gltf) {
                 planeBody.velocity.normalize().multiplyScalar(terminalVelocity);
                 planeBody.speed = terminalVelocity;
             }
+            planeMoving = thrustMagnitude != 0;
             plane.position.x += planeBody.velocity.x * delta;
             plane.position.y += planeBody.velocity.y * delta;
             plane.position.z += planeBody.velocity.z * delta;
@@ -433,6 +469,14 @@ loader.load("models/plane/plane_body.gltf", function(gltf) {
             camera.lookAt(new Vector3(plane.position.x, followCamPivot.position.y + plane.position.y, plane.position.z));
             planeBody.animate();
         	renderer.render(scene, camera);
+            if(!animatedBefore) {
+                if(!animated) {
+                    requestAnimationFrame(animate);
+                    animated = true;
+                }
+            } else {
+                requestAnimationFrame(animate);
+            }
         }
         animate();
     }, undefined, function(error) {
