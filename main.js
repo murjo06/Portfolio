@@ -96,7 +96,7 @@ const langPack = {
         "Programiral sem v C in C++ za Arduino",
         "Simuliral sem lete raket",
         "Začel sem delati za stranke na spletni strani middas.mx v WordPressu",
-        "Učil sem se učiti Go",
+        "Začel sem se učiti Go",
         "Ustvaril sem svoj projekt v Sveltu z node.js-om",
         "",
         ""
