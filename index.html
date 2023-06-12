@@ -92,7 +92,6 @@ function setTitle() {
                 title += "🛩️";
                 title += emptyString.repeat(maxTitleLength - currentPlaneEmoji);
             }
-            console.log(title.length);
             document.title = title;
             currentPlaneEmoji += 1;
             if(currentPlaneEmoji == maxTitleLength - 1) {
