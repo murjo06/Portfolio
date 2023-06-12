@@ -243,7 +243,7 @@ loader.load("models/plane/plane_body.gltf", function(gltf) {
             return new Vector3(resistance * multiplier * speed * speed, 0, 0).applyQuaternion(plane.quaternion).negate();
         }
         function timingFunction(x) {
-            return (Math.sin(x - piHalves) + 1) / 0.46;
+            return x * x;
         }
         function startPlane(time, delta) {
             propeller.rotateOnAxis(new Vector3(1, 0, 0), timingFunction(time) * propellerSpeed * delta);
